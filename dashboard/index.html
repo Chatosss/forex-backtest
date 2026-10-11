@@ -1,0 +1,588 @@
+<meta charset="utf-8">
+<title>Mesa de Backtest Forex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="dados.js"></script>
+<style>
+:root{
+  --ground:#F4F6F9; --surface:#FFFFFF; --surface-2:#EAEEF4; --raised:#FBFCFD;
+  --line:#D5DBE5; --line-soft:#E6EAF1;
+  --ink:#151921; --ink-2:#4B5361; --ink-3:#818A99;
+  --accent:#2B4C8C; --accent-soft:#E7EDF8;
+  --pos:#0E6E48; --neg:#A63428; --warn:#8A6212;
+  --pos-fill:rgba(14,110,72,.13); --neg-fill:rgba(166,52,40,.13);
+  --candle-up:#2E8B62; --candle-down:#C0483B;
+  --faint:rgba(129,138,153,.42);
+  --shadow:0 1px 2px rgba(21,25,33,.06),0 8px 24px -12px rgba(21,25,33,.18);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0D1015; --surface:#141922; --surface-2:#1B212B; --raised:#191F29;
+  --line:#2A323E; --line-soft:#202733;
+  --ink:#E3E8EF; --ink-2:#A5AEBC; --ink-3:#6C7584;
+  --accent:#7FA3E2; --accent-soft:#1A2434;
+  --pos:#3FB07E; --neg:#E06E60; --warn:#D2A64C;
+  --pos-fill:rgba(63,176,126,.15); --neg-fill:rgba(224,110,96,.15);
+  --candle-up:#3FB07E; --candle-down:#D8594A;
+  --faint:rgba(108,117,132,.5);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --ground:#0D1015; --surface:#141922; --surface-2:#1B212B; --raised:#191F29;
+  --line:#2A323E; --line-soft:#202733;
+  --ink:#E3E8EF; --ink-2:#A5AEBC; --ink-3:#6C7584;
+  --accent:#7FA3E2; --accent-soft:#1A2434;
+  --pos:#3FB07E; --neg:#E06E60; --warn:#D2A64C;
+  --pos-fill:rgba(63,176,126,.15); --neg-fill:rgba(224,110,96,.15);
+  --candle-up:#3FB07E; --candle-down:#D8594A;
+  --faint:rgba(108,117,132,.5);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:14px; line-height:1.5;
+}
+.num{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+
+/* ---------- cabecalho ---------- */
+header{
+  border-bottom:1px solid var(--line); background:var(--surface);
+  padding:18px 24px 0;
+}
+.head-top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:20px 32px;max-width:1560px;margin:0 auto}
+h1{
+  font-family:Newsreader,Georgia,serif; font-weight:600; font-size:27px;
+  letter-spacing:-.015em; margin:0; line-height:1.15; text-wrap:balance;
+}
+.sub{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:62ch}
+.meta-grid{display:flex;flex-wrap:wrap;gap:0 26px;margin-left:auto}
+.meta-item{display:flex;flex-direction:column;gap:1px}
+.meta-k{
+  font-family:"IBM Plex Sans";font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.meta-v{font-family:"IBM Plex Mono";font-size:12.5px;font-weight:500;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+.controls{
+  display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;
+  max-width:1560px;margin:16px auto 0;padding-bottom:14px;
+}
+.seg{display:flex;background:var(--surface-2);border-radius:7px;padding:2px;gap:1px}
+.seg button{
+  font:500 12.5px/1 "IBM Plex Sans",sans-serif; color:var(--ink-2);
+  background:none;border:0;padding:7px 13px;border-radius:5px;cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.ctrl-label{
+  font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-right:-14px;
+}
+
+/* ---------- corpo ---------- */
+main{
+  max-width:1560px;margin:0 auto;padding:20px 24px 40px;
+  display:grid;grid-template-columns:minmax(400px,452px) minmax(0,1fr);gap:20px;align-items:start;
+}
+@media (max-width:1080px){main{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.panel-head{
+  display:flex;align-items:baseline;gap:10px;padding:13px 16px 11px;
+  border-bottom:1px solid var(--line-soft);
+}
+.panel-title{font-family:Newsreader,Georgia,serif;font-size:16.5px;font-weight:600;margin:0}
+.panel-note{font-size:11.5px;color:var(--ink-3);margin-left:auto;text-align:right}
+
+/* ---------- lista de estrategias ---------- */
+table{border-collapse:collapse;width:100%}
+thead th{
+  font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);text-align:right;padding:9px 8px 8px;border-bottom:1px solid var(--line-soft);
+  cursor:pointer;user-select:none;white-space:nowrap;background:var(--surface);
+}
+thead th:first-child{text-align:left;padding-left:16px}
+thead th:last-child{padding-right:16px}
+thead th:hover{color:var(--ink)}
+thead th[aria-sort]{color:var(--accent)}
+thead th .arrow{font-size:8px;margin-left:2px}
+tbody tr{cursor:pointer;border-bottom:1px solid var(--line-soft)}
+tbody tr:last-child{border-bottom:0}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr[aria-selected="true"]{background:var(--accent-soft)}
+tbody td{padding:0;text-align:right;font-size:13px}
+tbody td>span,tbody td>div{padding:9px 8px}
+tbody td:first-child{text-align:left}
+tbody td:last-child>span{padding-right:16px}
+.nome-cel{display:flex;align-items:center;gap:8px;padding-left:16px!important}
+.rank{
+  font-family:"IBM Plex Mono";font-size:10.5px;color:var(--ink-3);
+  min-width:13px;text-align:right;flex:none;
+}
+.nome{font-size:12.5px;line-height:1.25;text-wrap:balance}
+tr[aria-selected="true"] .nome{font-weight:600}
+.spark{display:block;flex:none}
+
+/* ---------- faixa de indicadores ---------- */
+.stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(101px,1fr));
+  border-bottom:1px solid var(--line-soft);
+}
+.stat{padding:12px 13px;border-right:1px solid var(--line-soft);min-width:0}
+.stat:last-child{border-right:0}
+.stat-k{
+  font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);
+}
+.stat-v{font-family:"IBM Plex Mono";font-size:17.5px;font-weight:500;letter-spacing:-.02em;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat-sub{font-size:11px;color:var(--ink-3);margin-top:1px}
+
+/* ---------- graficos ---------- */
+.chart-wrap{position:relative}
+#velas{height:392px}
+#capital{height:186px;border-top:1px solid var(--line-soft)}
+.chart-cap{
+  display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;
+  padding:9px 16px;border-top:1px solid var(--line-soft);
+  font-size:11.5px;color:var(--ink-3);
+}
+.key{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.key i{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none}
+.key.tri i{width:0;height:0;border-radius:0;border-left:5px solid transparent;border-right:5px solid transparent}
+
+/* ---------- nota de rodape ---------- */
+.notas{
+  max-width:1560px;margin:22px auto 0;padding:0 24px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:18px 34px;
+}
+.nota h3{
+  font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 6px;
+}
+.nota p{margin:0 0 7px;font-size:12.5px;color:var(--ink-2);line-height:1.55;max-width:58ch}
+.nota b{color:var(--ink);font-weight:600}
+code{font-family:"IBM Plex Mono";font-size:11.5px;background:var(--surface-2);padding:1px 4px;border-radius:3px}
+</style>
+
+<header>
+  <div class="head-top">
+    <div>
+      <h1>Mesa de Backtest Forex</h1>
+      <p class="sub">Oito estratégias medidas nos mesmos seis pares, com custo de corretora real e execução defasada em uma barra.</p>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item"><span class="meta-k">Período</span><span class="meta-v" id="m-periodo">—</span></div>
+      <div class="meta-item"><span class="meta-k">Capital</span><span class="meta-v" id="m-capital">—</span></div>
+      <div class="meta-item"><span class="meta-k">Risco / operação</span><span class="meta-v" id="m-risco">—</span></div>
+      <div class="meta-item"><span class="meta-k">Fonte</span><span class="meta-v">MetaTrader 5</span></div>
+    </div>
+  </div>
+  <div class="controls">
+    <span class="ctrl-label">Par</span>
+    <div class="seg" id="seg-par"></div>
+    <span class="ctrl-label">Tempo gráfico</span>
+    <div class="seg" id="seg-tf"></div>
+  </div>
+</header>
+
+<main>
+  <section class="panel" aria-label="Estratégias">
+    <div class="panel-head">
+      <h2 class="panel-title">Estratégias</h2>
+      <span class="panel-note" id="lista-nota">—</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="tabela">
+        <thead><tr id="cab"></tr></thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Detalhe da estratégia">
+    <div class="panel-head">
+      <h2 class="panel-title" id="det-nome">—</h2>
+      <span class="panel-note" id="det-nota">—</span>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="chart-wrap">
+      <div id="velas"></div>
+      <div id="capital"></div>
+    </div>
+    <div class="chart-cap">
+      <span class="key tri"><i style="border-bottom:8px solid var(--candle-up)"></i>entrada comprada</span>
+      <span class="key tri"><i style="border-top:8px solid var(--candle-down)"></i>entrada vendida</span>
+      <span class="key"><i style="background:var(--pos)"></i>saída no lucro</span>
+      <span class="key"><i style="background:var(--neg)"></i>saída no prejuízo</span>
+      <span class="key"><i style="background:var(--accent)"></i>capital da estratégia</span>
+      <span class="key"><i style="background:var(--ink-3);opacity:.45"></i>demais estratégias</span>
+      <span id="cap-nota" style="margin-left:auto"></span>
+    </div>
+  </section>
+</main>
+
+<div class="notas">
+  <div class="nota">
+    <h3>Como a execução é simulada</h3>
+    <p>O sinal é calculado no <b>fechamento</b> de uma barra e executado na <b>abertura da seguinte</b> — nenhuma decisão usa preço que ainda não existia. Compra entra no ask, venda no bid, e o spread inteiro é pago uma vez por operação.</p>
+    <p>Quando stop e alvo caberiam na mesma barra, assume-se que o <b>stop bateu primeiro</b>. É o pior caso, e evita o otimismo que infla backtests intradiários.</p>
+  </div>
+  <div class="nota">
+    <h3>Risco e custo</h3>
+    <p>Cada operação arrisca <b>1% do capital</b> na distância até o stop, que é <code>2 × ATR(14)</code>. O tamanho da posição se ajusta à volatilidade, então uma perda vale o mesmo em qualquer par.</p>
+    <p>Custo modelado como conta <b>raw/ECN</b>: spread apertado mais <code>US$ 7</code> de comissão por lote de ida e volta — coerente com a conta usada como fonte dos dados.</p>
+  </div>
+  <div class="nota">
+    <h3>Como ler isto</h3>
+    <p>Nenhum destes resultados é recomendação de operar. São indicadores clássicos com parâmetros de manual, testados <b>uma vez</b>, sem otimização — justamente para servir de linha de base honesta.</p>
+    <p>A pergunta útil não é qual célula rendeu mais, e sim <b>quais estratégias se sustentam em vários pares</b>. Uma que só funciona num par costuma ser sorte amostral.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const D = window.LAB, LC = window.LightweightCharts;
+const $ = s => document.querySelector(s);
+
+/* ---------- estado ---------- */
+const est = {
+  par: D.meta.pares[0],
+  tf: "D1",
+  estrategia: null,
+  ordem: "retorno_pct",
+  desc: true
+};
+
+/* ---------- formatadores ---------- */
+const f1 = n => (n>0?"+":"") + n.toFixed(1) + "%";
+const f2 = n => (n>0?"+":"") + n.toFixed(2) + "%";
+const usd = n => "US$ " + n.toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:0});
+const sinal = n => n>0 ? "pos" : n<0 ? "neg" : "";
+
+/* ---------- cores a partir dos tokens do tema ---------- */
+function tema(){
+  const cs = getComputedStyle(document.documentElement);
+  const v = k => cs.getPropertyValue(k).trim();
+  return {
+    ink:v("--ink"), ink2:v("--ink-2"), ink3:v("--ink-3"),
+    linha:v("--line-soft"), surface:v("--surface"),
+    up:v("--candle-up"), down:v("--candle-down"),
+    accent:v("--accent"), pos:v("--pos"), neg:v("--neg"), faint:v("--faint")
+  };
+}
+
+/* ---------- seletores do topo ---------- */
+function montaSeg(el, itens, atual, aoEscolher){
+  el.innerHTML = "";
+  itens.forEach(it => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = it.rot;
+    b.setAttribute("aria-pressed", String(it.val === atual));
+    b.addEventListener("click", () => aoEscolher(it.val));
+    el.appendChild(b);
+  });
+}
+
+/* ---------- linhas da tabela ---------- */
+const COLUNAS = [
+  {k:"nome",  rot:"Estratégia", larg:"auto"},
+  {k:"retorno_pct", rot:"Retorno"},
+  {k:"max_dd_pct",  rot:"Queda máx."},
+  {k:"sharpe",      rot:"Sharpe"},
+  {k:"n_trades",    rot:"Ops."}
+];
+
+function filtradas(){
+  return D.resultados.filter(r => r.par === est.par && r.tempo === est.tf);
+}
+
+function ordenadas(){
+  const rs = filtradas().slice();
+  const k = est.ordem;
+  rs.sort((a,b) => {
+    const va = k==="nome" ? a.estrategia : a.stats[k];
+    const vb = k==="nome" ? b.estrategia : b.stats[k];
+    if(typeof va === "string") return est.desc ? vb.localeCompare(va) : va.localeCompare(vb);
+    return est.desc ? vb-va : va-vb;
+  });
+  return rs;
+}
+
+/* mini curva de capital em SVG, normalizada ao proprio intervalo */
+function sparkline(curva, cor){
+  const W=46, H=17, n=curva.length;
+  if(n<2) return "";
+  let min=Infinity, max=-Infinity;
+  for(const v of curva){ if(v<min)min=v; if(v>max)max=v; }
+  const amp = (max-min) || 1;
+  const passo = (n-1)/(W-1);
+  let d = "";
+  for(let x=0; x<W; x++){
+    const v = curva[Math.round(x*passo)];
+    const y = (H-1.5) - ((v-min)/amp)*(H-3);
+    d += (x?"L":"M") + x + " " + y.toFixed(1);
+  }
+  // linha do capital inicial, para o olho saber onde e o zero
+  const c0 = D.meta.capital_inicial;
+  const y0 = (H-1.5) - ((c0-min)/amp)*(H-3);
+  const base = (c0>=min && c0<=max)
+    ? `<line x1="0" y1="${y0.toFixed(1)}" x2="${W}" y2="${y0.toFixed(1)}" stroke="currentColor" stroke-width="1" opacity=".25" stroke-dasharray="2 2"/>`
+    : "";
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" style="color:var(--ink-3)">
+    ${base}<path d="${d}" fill="none" stroke="${cor}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+}
+
+function desenhaTabela(){
+  const cab = $("#cab");
+  cab.innerHTML = "";
+  COLUNAS.forEach(c => {
+    const th = document.createElement("th");
+    const ativo = est.ordem === c.k;
+    th.innerHTML = c.rot + (ativo ? `<span class="arrow">${est.desc?"▼":"▲"}</span>` : "");
+    if(ativo) th.setAttribute("aria-sort", est.desc?"descending":"ascending");
+    th.addEventListener("click", () => {
+      if(est.ordem === c.k) est.desc = !est.desc;
+      else { est.ordem = c.k; est.desc = c.k !== "nome" && c.k !== "max_dd_pct"; }
+      desenhaTabela();
+    });
+    cab.appendChild(th);
+  });
+
+  const corpo = $("#corpo");
+  corpo.innerHTML = "";
+  const rs = ordenadas();
+  const t = tema();
+  rs.forEach((r,i) => {
+    const s = r.stats;
+    const tr = document.createElement("tr");
+    tr.setAttribute("aria-selected", String(r.id === est.estrategia));
+    const cor = s.retorno_pct >= 0 ? t.pos : t.neg;
+    tr.innerHTML = `
+      <td><div class="nome-cel">
+        <span class="rank num">${i+1}</span>
+        ${sparkline(r.curva, cor)}
+        <span class="nome">${r.estrategia}</span>
+      </div></td>
+      <td><span class="num ${sinal(s.retorno_pct)}" style="font-weight:600">${f1(s.retorno_pct)}</span></td>
+      <td><span class="num" style="color:var(--ink-2)">${s.max_dd_pct.toFixed(1)}%</span></td>
+      <td><span class="num ${sinal(s.sharpe)}">${s.sharpe.toFixed(2)}</span></td>
+      <td><span class="num" style="color:var(--ink-3)">${s.n_trades}</span></td>`;
+    tr.addEventListener("click", () => { est.estrategia = r.id; desenhaTabela(); desenhaDetalhe(); });
+    corpo.appendChild(tr);
+  });
+
+  const positivas = rs.filter(r => r.stats.retorno_pct > 0).length;
+  $("#lista-nota").textContent = `${positivas} de ${rs.length} terminam no lucro`;
+}
+
+/* ---------- faixa de indicadores ---------- */
+function desenhaStats(r){
+  const s = r.stats;
+  const itens = [
+    {k:"Retorno no período", v:f2(s.retorno_pct), cls:sinal(s.retorno_pct),
+     sub:`${usd(s.capital_final)} ao final`},
+    {k:"Ao ano", v:f2(s.cagr_pct), cls:sinal(s.cagr_pct), sub:`em ${s.anos} anos`},
+    {k:"Queda máxima", v:s.max_dd_pct.toFixed(2)+"%", cls:"neg",
+     sub:`${Math.round(s.max_dd_dias)} dias no fundo`},
+    {k:"Sharpe", v:s.sharpe.toFixed(2), cls:sinal(s.sharpe), sub:`Sortino ${s.sortino.toFixed(2)}`},
+    {k:"Operações", v:String(s.n_trades), cls:"", sub:`${s.taxa_acerto_pct.toFixed(0)}% de acerto`},
+    {k:"Fator de lucro", v:s.fator_lucro>=99?"—":s.fator_lucro.toFixed(2), cls:"",
+     sub:`expectativa ${s.expectativa_usd>=0?"+":""}US$ ${s.expectativa_usd.toFixed(2)}`},
+    {k:"Comprar e segurar", v:f2(s.buy_hold_pct), cls:sinal(s.buy_hold_pct),
+     sub:"o par, sem estratégia"}
+  ];
+  $("#stats").innerHTML = itens.map(i => `
+    <div class="stat">
+      <div class="stat-k">${i.k}</div>
+      <div class="stat-v ${i.cls}">${i.v}</div>
+      <div class="stat-sub">${i.sub}</div>
+    </div>`).join("");
+}
+
+/* ---------- graficos ---------- */
+let gVelas, sVelas, gCapital, sCapital, sOutras = [];
+
+function opcoesBase(t){
+  return {
+    layout:{ background:{type:"solid",color:t.surface}, textColor:t.ink3,
+             fontFamily:'"IBM Plex Mono", ui-monospace, monospace', fontSize:10 },
+    grid:{ vertLines:{color:t.linha}, horzLines:{color:t.linha} },
+    rightPriceScale:{ borderColor:t.linha, scaleMargins:{top:.12,bottom:.12} },
+    timeScale:{ borderColor:t.linha, rightOffset:4 },
+    crosshair:{ mode:LC.CrosshairMode.Normal,
+      vertLine:{color:t.ink3,width:1,style:3,labelBackgroundColor:t.ink2},
+      horzLine:{color:t.ink3,width:1,style:3,labelBackgroundColor:t.ink2} },
+    handleScale:{ axisPressedMouseMove:{price:false} }
+  };
+}
+
+function criaGraficos(){
+  const t = tema();
+  gVelas = LC.createChart($("#velas"), Object.assign(opcoesBase(t), {
+    width: $("#velas").clientWidth, height: $("#velas").clientHeight
+  }));
+  sVelas = gVelas.addCandlestickSeries({
+    upColor:t.up, downColor:t.down, borderUpColor:t.up, borderDownColor:t.down,
+    wickUpColor:t.up, wickDownColor:t.down
+  });
+
+  gCapital = LC.createChart($("#capital"), Object.assign(opcoesBase(t), {
+    width: $("#capital").clientWidth, height: $("#capital").clientHeight,
+    rightPriceScale:{ borderColor:t.linha, scaleMargins:{top:.16,bottom:.1} }
+  }));
+
+  // os dois graficos compartilham o eixo de tempo. A sincronia e por DATA,
+  // nao por indice: as velas so tem dias de pregao e a curva de capital tem
+  // todos os dias do calendario, entao o mesmo indice cai em datas diferentes.
+  let travado = false;
+  const liga = (a,b) => a.timeScale().subscribeVisibleTimeRangeChange(r => {
+    if(travado || !r) return;
+    travado = true;
+    try { b.timeScale().setVisibleRange(r); } catch(e) { /* serie ainda vazia */ }
+    travado = false;
+  });
+  liga(gVelas, gCapital); liga(gCapital, gVelas);
+
+  new ResizeObserver(() => {
+    gVelas.applyOptions({width:$("#velas").clientWidth});
+    gCapital.applyOptions({width:$("#capital").clientWidth});
+  }).observe($("#velas"));
+}
+
+const MAX_MARCAS = 260;
+
+function desenhaDetalhe(){
+  const r = D.resultados.find(x => x.id === est.estrategia);
+  if(!r) return;
+  const t = tema();
+  const chave = est.par + "_" + est.tf;
+  const ca = D.candles[chave];
+
+  $("#det-nome").textContent = r.estrategia;
+  $("#det-nota").innerHTML = `${r.par} &middot; ${r.tempo === "D1" ? "diário" : "1 hora"}`;
+  desenhaStats(r);
+
+  // ---- velas ----
+  const velas = ca.t.map((tt,i) => ({time:tt, open:ca.o[i], high:ca.h[i], low:ca.l[i], close:ca.c[i]}));
+  sVelas.setData(velas);
+
+  // ---- marcadores de entrada e saida ----
+  const validos = new Set(ca.t);
+  const ajusta = tt => {          // encaixa na barra mais proxima existente
+    if(validos.has(tt)) return tt;
+    let lo=0, hi=ca.t.length-1;
+    while(lo<hi){ const m=(lo+hi)>>1; if(ca.t[m]<tt) lo=m+1; else hi=m; }
+    return ca.t[lo];
+  };
+  const primeira = ca.t[0];
+  const ops = r.ops.filter(op => op[0] >= primeira).slice(-MAX_MARCAS);
+  const marcas = [];
+  ops.forEach(([te,tx,dir,pe,px,pnl,motivo]) => {
+    marcas.push({
+      time:ajusta(te), position: dir===1?"belowBar":"aboveBar",
+      color: dir===1?t.up:t.down, shape: dir===1?"arrowUp":"arrowDown",
+      text: (dir===1?"C ":"V ") + pe
+    });
+    marcas.push({
+      time:ajusta(tx), position: dir===1?"aboveBar":"belowBar",
+      color: pnl>=0?t.pos:t.neg, shape:"circle",
+      text: (pnl>=0?"+":"") + pnl.toFixed(0) + " " + motivo
+    });
+  });
+  marcas.sort((a,b) => a.time - b.time);
+  sVelas.setMarkers(marcas);
+
+  $("#cap-nota").textContent = (r.n_ops_total > ops.length)
+    ? `mostrando as ${MAX_MARCAS} operações mais recentes de ${r.n_ops_total}`
+    : `${r.ops.length} operações no gráfico`;
+
+  // ---- curvas de capital: a escolhida em destaque, as outras ao fundo ----
+  sOutras.forEach(s => gCapital.removeSeries(s));
+  sOutras = [];
+  if(sCapital){ gCapital.removeSeries(sCapital); sCapital = null; }
+
+  const eixo = D.linhas_tempo[chave];
+  filtradas().forEach(o => {
+    if(o.id === r.id) return;
+    const s = gCapital.addLineSeries({
+      color:t.faint, lineWidth:1, priceLineVisible:false, lastValueVisible:false,
+      crosshairMarkerVisible:false
+    });
+    s.setData(eixo.map((tt,i) => ({time:tt, value:o.curva[i]})));
+    sOutras.push(s);
+  });
+
+  sCapital = gCapital.addAreaSeries({
+    lineColor:t.accent, lineWidth:2, topColor:"transparent", bottomColor:"transparent",
+    priceLineVisible:false, crosshairMarkerVisible:true,
+    priceFormat:{type:"price", precision:0, minMove:1}
+  });
+  sCapital.setData(eixo.map((tt,i) => ({time:tt, value:r.curva[i]})));
+  sCapital.createPriceLine({
+    price:D.meta.capital_inicial, color:t.ink3, lineWidth:1, lineStyle:2,
+    axisLabelVisible:false, title:""
+  });
+
+  gVelas.timeScale().fitContent();
+}
+
+/* ---------- troca de tema ---------- */
+function reaplicaTema(){
+  if(!gVelas) return;
+  const t = tema();
+  const base = opcoesBase(t);
+  gVelas.applyOptions(base);
+  gCapital.applyOptions(base);
+  sVelas.applyOptions({
+    upColor:t.up, downColor:t.down, borderUpColor:t.up, borderDownColor:t.down,
+    wickUpColor:t.up, wickDownColor:t.down
+  });
+  desenhaTabela();
+  desenhaDetalhe();
+}
+
+/* ---------- inicio ---------- */
+function escolheMelhor(){
+  const rs = filtradas();
+  const rsi = rs.find(r => r.estrategia === "RSI 14 reversão"); // o pedido original
+  est.estrategia = (rsi || rs[0]).id;
+}
+
+function trocaContexto(){
+  montaSeg($("#seg-par"), D.meta.pares.map(p => ({rot:p, val:p})), est.par, p => {
+    est.par = p; escolheMelhor(); trocaContexto();
+  });
+  montaSeg($("#seg-tf"), [{rot:"Diário",val:"D1"},{rot:"1 hora",val:"H1"}], est.tf, tf => {
+    est.tf = tf; escolheMelhor(); trocaContexto();
+  });
+  desenhaTabela();
+  desenhaDetalhe();
+}
+
+function init(){
+  const m = D.meta;
+  $("#m-periodo").textContent = m.inicio.slice(0,7).replace("-","/") + " – " + m.fim.slice(0,7).replace("-","/");
+  $("#m-capital").textContent = usd(m.capital_inicial);
+  $("#m-risco").textContent = m.risco_por_op_pct.toFixed(0) + "% (2×ATR)";
+
+  criaGraficos();
+  escolheMelhor();
+  trocaContexto();
+
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reaplicaTema);
+  new MutationObserver(reaplicaTema).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+}
+
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+})();
+</script>

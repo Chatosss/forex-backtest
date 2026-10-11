@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+out/
+data/*.csv
+!data/EURUSD_D1_mt5.csv
+!data/EURUSD_H1_mt5.csv
